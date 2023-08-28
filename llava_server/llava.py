@@ -7,7 +7,10 @@ from llava.utils import disable_torch_init
 from transformers import CLIPImageProcessor
 from PIL import Image
 from llava.conversation import simple_conv_multimodal
-
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from peft import PeftModel
+#from huggingface_hub import hf_hub_download
+#import datetime
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_IMAGE_PATCH_TOKEN = "<im_patch>"
@@ -21,9 +24,15 @@ PROMPT = simple_conv_multimodal.get_prompt() + "Human: "
 def load_llava(params_path):
     # load model
     disable_torch_init()
-    tokenizer = AutoTokenizer.from_pretrained(params_path)
+    bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16
+    )
+    tokenizer = AutoTokenizer.from_pretrained("/kaggle/working/llavamodel")
     model = AutoModelForCausalLM.from_pretrained(
-        params_path, torch_dtype=torch.float16
+        "/kaggle/working/llavamodel", torch_dtype=torch.float16, quantization_config=bnb_config, device_map="auto", low_cpu_mem_usage=True
     ).cuda()
     image_processor = CLIPImageProcessor.from_pretrained(
         model.config.mm_vision_tower, torch_dtype=torch.float16
